@@ -295,12 +295,17 @@ class Reader {
     }
 }
 
-const open = async file => {
-    document.body.removeChild($('#drop-target'))
-    const reader = new Reader()
-    globalThis.reader = reader
-    await reader.open(file)
-}
+const open = async (file) => {
+    document.body.removeChild($("#drop-target"));
+    if (file && file.type === "application/epub+zip") {
+        storeEPUBInLocalStorage(file);
+    } else {
+        console.error("Please upload a valid EPUB file.");
+    }
+    const reader = new Reader();
+    globalThis.reader = reader;
+    await reader.open(file);
+};
 
 const dragOverHandler = e => e.preventDefault()
 const dropHandler = e => {
@@ -327,3 +332,35 @@ if (url) fetch(url)
     .then(blob => open(new File([blob], new URL(url).pathname)))
     .catch(e => console.error(e))
 else dropTarget.style.visibility = 'visible'
+
+function storeEPUBInLocalStorage(file) {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        const base64String = event.target.result.split(",")[1];
+        localStorage.setItem("epubFile", base64String);
+        console.log("EPUB stored in localStorage");
+    };
+    reader.readAsDataURL(file);
+}
+
+function base64ToBlob(base64, contentType) {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, { type: contentType });
+}
+
+if (localStorage.getItem("epubFile")) {
+    const base64String = localStorage.getItem("epubFile");
+    const blob = base64ToBlob(base64String, "application/epub+zip");
+    const file = new File([blob], "epubFile", { type: blob.type });
+    open(file).catch((e) => console.error(e));
+}
