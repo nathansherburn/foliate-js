@@ -284,6 +284,9 @@ class Reader {
     }
     #onRelocate({ detail }) {
         const { fraction, location, tocItem, pageItem } = detail
+        if (trackingStarted) {
+            localStorage.setItem('$$$$location-' + book, JSON.stringify(detail))
+        }
         const percent = percentFormat.format(fraction)
         const loc = pageItem
             ? `Page ${pageItem.label}`
@@ -296,12 +299,19 @@ class Reader {
     }
 }
 
+let trackingStarted = false;
+
 const open = async (file) => {
     document.body.removeChild($("#drop-target"));
     storeBookInLocalStorage(file);
     const reader = new Reader();
     globalThis.reader = reader;
     await reader.open(file);
+    setTimeout(() => {
+        trackingStarted = true;
+        const location = JSON.parse(localStorage.getItem('$$$$location-' + book));
+        reader.view.goTo(location)
+    }, 1000);
 };
 
 const dragOverHandler = e => e.preventDefault()
