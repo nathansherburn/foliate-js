@@ -191,7 +191,7 @@ class Reader {
         $('#menu-button').append(menu.element)
         $('#menu-button > button').addEventListener('click', () =>
             menu.element.classList.toggle('show'))
-        menu.groups.layout.select('paginated')
+        menu.groups.layout.select('scrolled')
     }
     async open(file) {
         this.view = await getView(file)
@@ -201,6 +201,7 @@ class Reader {
         const { book } = this.view
         this.view.renderer.setStyles?.(getCSS(this.style))
         this.view.renderer.next()
+        this.view.renderer.setAttribute('flow', 'scrolled')
 
         $('#header-bar').style.visibility = 'visible'
         $('#nav-bar').style.visibility = 'visible'
