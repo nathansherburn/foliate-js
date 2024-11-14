@@ -46,7 +46,7 @@ There are mainly three kinds of modules:
 
 The modules are designed to be modular. In general, they don't directly depend on each other. Instead they depend on certain interfaces, detailed below. The exception is `view.js`. It is the higher level renderer that strings most of the things together, and you can think of it as the main entry point of the library. See "Basic Usage" below.
 
-The repo also includes a still higher level reader, though strictly speaking, `reader.html` (along with `reader.js` and its associated files in `ui/` and `vendor/`) is not considered part of the library itself. It's akin to [Epub.js Reader](https://github.com/futurepress/epubjs-reader). You are expected to modify it or replace it with your own code.
+The repo also includes a still higher level reader, though strictly speaking, `reader.html` (along with `reader.js` and its associated files in `ui/`) is not considered part of the library itself. It's akin to [Epub.js Reader](https://github.com/futurepress/epubjs-reader). You are expected to modify it or replace it with your own code.
 
 ### Basic Usage
 
@@ -61,8 +61,9 @@ view.addEventListener('relocate', e => {
     console.log(e.detail)
 })
 
-const book = /* an object implementing the "book" interface */
-await view.open(book)
+// can open a File/Blob object or a URL
+// or any object that implements the "book" interface
+await view.open('example.epub')
 await view.goTo(/* path, section index, or CFI */)
 ```
 
@@ -94,7 +95,7 @@ Processors for each book format return an object that implements the following i
     - `.href`: a string representing the destination of the item. Does not have to be a valid URL.
     - `.subitems`: a array that contains TOC items
 - `.pageList`: same as the TOC, but for the [page list](https://www.w3.org/publishing/epub32/epub-packages.html#sec-nav-pagelist).
-- `.metadata`: an object representing the metadata of the book. Currently, it follows more or less the metadata schema of [Readium's webpub manifest](https://github.com/readium/webpub-manifest).
+- `.metadata`: an object representing the metadata of the book. Currently, it follows more or less the metadata schema of [Readium's webpub manifest](https://github.com/readium/webpub-manifest). Note that titles and names can be a string or an object like `{ ja: "草枕", en: 'Kusamakura' }`, and authors, etc. can be a string, an object, or an array of strings or objects.
 - `.rendition`: an object that contains properties that correspond to the [rendition properties](https://www.w3.org/publishing/epub32/epub-packages.html#sec-package-metadata-rendering) in EPUB. If `.layout` is `"pre-paginated"`, the book is rendered with the fixed layout renderer.
 - `.resolveHref(href)`: given an href string, returns an object representing the destination referenced by the href, which has the following properties:
     - `.index`: the index of the referenced section in the `.section` array
@@ -123,7 +124,7 @@ One advantage of having such an interface is that one can easily use it for read
 
 ### Mobipocket and Kindle Files
 
-It can read both MOBI and KF8 (.azw3, and combo .mobi files) from a `File` (or `Blob`) object. For MOBI files, it decompresses all text at once and splits the raw markup into sections at every `<mbp:pagebreak>`, instead of outputing one long page for the whole book, which drastically improves rendering performance. For KF8 files, it tries to decompress as little text as possible when loading a section, but it can still be quite slow due to the slowness of the current HUFF/CDIC decompressor implementation. In all cases, images and other resources are not loaded until they are needed.
+It can read both MOBI and KF8 (.azw3, and combo .mobi files) from a `File` (or `Blob`) object. For MOBI files, it decompresses all text at once and splits the raw markup into sections at every `<mbp:pagebreak>`, instead of outputting one long page for the whole book, which drastically improves rendering performance. For KF8 files, it tries to decompress as little text as possible when loading a section, but it can still be quite slow due to the slowness of the current HUFF/CDIC decompressor implementation. In all cases, images and other resources are not loaded until they are needed.
 
 Note that KF8 files can contain fonts that are zlib-compressed. They need to be decompressed with an external library. The demo uses [fflate](https://github.com/101arrowz/fflate) to decompress them.
 
@@ -237,7 +238,7 @@ A range CFI is an object `{ parent, start, end }`, each property being the same 
 
 The parser uses a state machine rather than regex, and should handle assertions that contain escaped characters correctly (see tests for examples of this).
 
-It has the ability ignore nodes, which is needed if you want to inject your own nodes into the document without affecting CFIs. To do this, you need to pass the optional filter function that works similarily to the filter function of [`TreeWalker`s](https://developer.mozilla.org/en-US/docs/Web/API/Document/createTreeWalker):
+It has the ability ignore nodes, which is needed if you want to inject your own nodes into the document without affecting CFIs. To do this, you need to pass the optional filter function that works similarly to the filter function of [`TreeWalker`s](https://developer.mozilla.org/en-US/docs/Web/API/Document/createTreeWalker):
 
 ```js
 const filter = node => node.nodeType !== 1 ? NodeFilter.FILTER_ACCEPT
@@ -340,11 +341,23 @@ These two functions return an object that implements the following interface:
     - `value`: a string; the default value of the parameter
 - `.search(map)`: a function, whose argument is a `Map` whose values are `Map`s (i.e. a two-dimensional map). The first key is the namespace of the search parameter. For non-namespaced parameters, the first key must be `null`. The second key is the parameter's name. Returns a string representing the URL of the search results.
 
+### Generating Images for Quotes
+
+With `quote-image.js`, one can generate shareable images for quotes:
+
+```js
+document.querySelector('foliate-quoteimage').getBlob({
+    title: 'The Time Machine',
+    author: 'H. G. Wells',
+    text: 'Can an instantaneous cube exist?',
+})
+```
+
 ### Supported Browsers
 
 The main use of the library is for use in [Foliate](https://github.com/johnfactotum/foliate), which uses WebKitGTK. As such it's the only engine that has been tested extensively. But it should also work in Chromium and Firefox.
 
-Apart from the renderers, using the modules outside browsers is also possible. Most features depend on having the global objects `Blob`, `TextDecoder`, `TextEncoder`, `DOMParser`, `XMLSerializer`, and `URL`, and should work if you polyfill them. Note that `epubcfi.js` can be used as is in any envirnoment if you only need to parse or sort CFIs.
+Apart from the renderers, using the modules outside browsers is also possible. Most features depend on having the global objects `Blob`, `TextDecoder`, `TextEncoder`, `DOMParser`, `XMLSerializer`, and `URL`, and should work if you polyfill them. Note that `epubcfi.js` can be used as is in any environment if you only need to parse or sort CFIs.
 
 ## License
 
